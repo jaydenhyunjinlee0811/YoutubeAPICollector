@@ -1,7 +1,12 @@
-import json 
+import json
+import os 
 import requests
+import threading
+from queue import Queue
 
 from .utils import get_logger
+
+MAX_THREADS=6
 
 class YoutubeAPIFetch:
     def __init__(
@@ -13,6 +18,8 @@ class YoutubeAPIFetch:
         self.playlist_source_api = playlist_source_api
         self.video_source_api = video_source_api
 
+        self.fetched_data: Queue = Queue()
+        self.prcsd_data: Queue = Queue()
         self.data = list()
         self.logger = get_logger(logger_fp)
 
@@ -27,14 +34,45 @@ class YoutubeAPIFetch:
             youtube_playlist_id=youtube_playlist_id
         )
 
-        for i, item in enumerate(playlist_items_generator):
-            if i >= 100:
+        cnt=0
+        cache = set()
+        for item in playlist_items_generator:
+            if cnt >= 100:
                 playlist_items_generator.close()
                 break
-            video_id = item['contentDetails']['videoId']
-            raw_video_info = self._fetch_video_item_page(google_api_key=google_api_key, video_id=video_id)
-            self.data.append(self._summarize_video_item(video_id=video_id, video_info=raw_video_info))
-            self.logger.info('Page [%s]th data collection & transformation complete', str(i+1))
+
+            try:
+                video_id = item['contentDetails']['videoId']
+            except KeyError:
+                continue
+
+            # Collect at least 100 unique set of videos
+            if video_id in cache:
+                print(video_id)
+                continue
+            self.fetched_data.put(video_id)
+            cache.add(video_id)
+            self.logger.info('Collected content of id: [%s] from playlist', video_id)
+            cnt+=1
+
+        del cache
+        self.logger.info('Successfully collected [%s] video data', cnt)
+
+        num_threads = min(os.cpu_count(), MAX_THREADS)
+        threads = list()
+        for _ in range(num_threads):
+            thread = threading.Thread(target=self._async_fetch_video_item_page, args=(google_api_key,))
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        while not self.prcsd_data.empty():
+            self.data.append(self.prcsd_data.get())
+        # raw_video_info = self._async_fetch_video_item_page(google_api_key=google_api_key, video_id=video_id)
+        # self.data.append(self._summarize_video_item(video_id=video_id, video_info=raw_video_info))
+        # self.logger.info('Page [%s]th data collection & transformation complete', str(i+1))
 
 ################ Data Generator ################
 
@@ -61,8 +99,6 @@ class YoutubeAPIFetch:
         if page_token is not None:
             yield from self._fetch_playlist_items(google_api_key, youtube_playlist_id, page_token)
 
-################ GET Response functions ################
-
     def _fetch_playlist_item_page(
         self,
         google_api_key: str, 
@@ -83,18 +119,27 @@ class YoutubeAPIFetch:
         payload = json.loads(response.text)
         return payload
 
-    def _fetch_video_item_page(
+################ Multithreaded(Async) collection of video content data ################
+
+    def _async_fetch_video_item_page(
         self,
-        google_api_key: str, 
-        video_id: str
+        google_api_key: str
     ):
-        response = requests.get(self.video_source_api, params={
-            'key':google_api_key, 
-            'id': video_id, 
-            'part': 'snippet,statistics'
-        })
-        res = json.loads(response.text)['items'].pop(0)
-        return res
+        while True:
+            if self.fetched_data.empty():
+                return
+            else:
+                video_id = self.fetched_data.get()
+                self.logger.info('Requesting GET for content detail information about video with ID: [%s]', video_id)
+                response = requests.get(self.video_source_api, params={
+                    'key':google_api_key, 
+                    'id': video_id, 
+                    'part': 'snippet,statistics'
+                })
+                res = json.loads(response.text)['items'].pop(0)
+                prcsd = self._summarize_video_item(video_id, res)
+                self.prcsd_data.put(prcsd)
+                continue
 
 ################ Parser function ################
 

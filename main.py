@@ -28,7 +28,7 @@ def main():
     )
     with open(f'data/vid_output_{dt_str}.json', 'w') as f:
         f.write('')
-        json.dump(fetcher.data, f, indent=4)
+        json.dump(fetcher.prcsd_data, f, indent=4)
 
     logger.info("END")
 if __name__ == '__main__':
