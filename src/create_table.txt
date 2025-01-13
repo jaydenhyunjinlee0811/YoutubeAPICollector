@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS {tbl_name};
+
+CREATE TABLE IF NOT EXISTS {tbl_name} (
+  videoId varchar(55) NOT NULL,
+  title varchar(255) NULL,
+  publishedAt varchar(255) NULL,
+  channel varchar(255) NULL,
+  viewCount int NULL,
+  likeCount int NULL,
+  favoriteCount int NULL,
+  commentCount int NULL,
+  CONSTRAINT PK_videos PRIMARY KEY (videoId)
+);
