@@ -11,7 +11,11 @@ from src.utils import get_logger
 
 # Configuration
 TODAY = datetime.datetime.now()
-LOGGER_FP = ...
+DT_STR = datetime.datetime.strftime(
+    TODAY, 
+    '%Y%m%d_%H%M%S'
+)
+LOGGER_FP = os.path.join(os.getcwd(), 'log', f'YoutubeAPICollector_{DT_STR}.log')
 
 def main():
     # Command Line flags
@@ -26,24 +30,21 @@ def main():
 	)
     args = parser.parse_args()
 
-    logger = get_logger()
+    logger = get_logger(LOGGER_FP)
     logger.info("START")
     logger.info('RUNTIME: [%s]', TODAY)
     logger.info('LOCALLY SAVE FILE? [%s]', args.local_save)
     
     fetcher = YoutubeAPIFetch(
         playlist_source_api=CONFIG['PLAYLIST_SOURCE_API'],
-        video_source_api=CONFIG['VIDEO_SOURCE_API']
+        video_source_api=CONFIG['VIDEO_SOURCE_API'],
+        logger_fp=LOGGER_FP
     )
     fetcher.fetch(
         google_api_key=CONFIG['google_api_key'],
         youtube_playlist_id=CONFIG['youtube_playlist_id']
     )
 
-    dt_str = datetime.datetime.strftime(
-        TODAY, 
-        '%Y%m%d_%H%M%S'
-    )
     dt_db_folder = datetime.datetime.strftime(
         TODAY, 
         '%Y%m%d'
@@ -51,7 +52,7 @@ def main():
 
     # Save fetched data as .json file if specified
     if args.local_save:
-        with open(f'data/vid_output_{dt_str}.json', 'w') as f:
+        with open(f'data/vid_output_{DT_STR}.json', 'w') as f:
             f.write('')
             json.dump(fetcher.data, f, indent=4)
 
@@ -63,7 +64,7 @@ def main():
     SELECT name FROM sqlite_master WHERE type='table';
     '''
     ingest_query = """
-    INSERT INTO {} (videoId, title, publishedAt, channel, viewCount, likeCount, favoriteCount, commentCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+    INSERT INTO {} (videoId, title, publishedAt, channel, viewCount, likeCount, favoriteCount, commentCount, insertedDt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     """
     
     if not os.path.exists(db_path):
@@ -87,11 +88,10 @@ def main():
 
             # Ingest data into dest table
             ingest_query = ingest_query.format(tbl_name)
-            print(ingest_query)
 
             # Transform
             rows = [
-                tuple(item.values()) for item in fetcher.data
+                tuple(item.values())+(str(TODAY),) for item in fetcher.data
             ]
             _ = cursor.executemany(ingest_query, rows)
             logger.info('[%d] records inserted into [%s]', cursor.rowcount, tbl_name)

@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS {tbl_name} (
   likeCount int NULL,
   favoriteCount int NULL,
   commentCount int NULL,
+  insertedDt varchar(55) NULL,
   CONSTRAINT PK_videos PRIMARY KEY (videoId)
 );

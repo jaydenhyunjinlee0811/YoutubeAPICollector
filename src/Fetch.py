@@ -74,7 +74,7 @@ class YoutubeAPIFetch:
         # self.data.append(self._summarize_video_item(video_id=video_id, video_info=raw_video_info))
         # self.logger.info('Page [%s]th data collection & transformation complete', str(i+1))
 
-################ Data Generator ################
+################ Recurisve Generator ################
 
     def _fetch_playlist_items(
         self,

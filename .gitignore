@@ -177,3 +177,4 @@ log/
 config/
 dev.py
 db/
+main.sh
