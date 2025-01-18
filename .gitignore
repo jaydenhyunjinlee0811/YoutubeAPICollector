@@ -174,7 +174,5 @@ cython_debug/
 # Development
 data/
 log/
-config/
 dev.py
 db/
-main.sh

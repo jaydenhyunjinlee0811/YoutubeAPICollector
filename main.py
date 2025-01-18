@@ -5,7 +5,7 @@ import datetime
 import sqlite3
 from argparse import ArgumentParser
 
-from config import CONFIG
+from data.__init__personal import CONFIG
 from src import YoutubeAPIFetch
 from src.utils import get_logger
 
@@ -98,12 +98,6 @@ def main():
             
         except sqlite3.Error:
             logger.error(sqlite3.Error, exc_info=True)
-        # finally:
-        #     if cursor:
-        #         cursor.close()
-
-        #     if conn:
-        #         conn.close()
     
     logger.info("END")
 if __name__ == '__main__':

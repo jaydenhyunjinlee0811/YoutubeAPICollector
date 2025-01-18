@@ -4,9 +4,11 @@ import sys
 def get_logger(fp=None):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
+    if logger.handlers:
+        logger.handlers.clear()
 
     formatter = logging.Formatter(
-        fmt="%(asctime)s [%(threadName)s] [%(levelname)s] > %(message)s",
+        fmt="%(asctime)s [%(threadName)s] [%(levelname)s] >> %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
@@ -15,8 +17,6 @@ def get_logger(fp=None):
     )
     stream_handler.setFormatter(formatter)
 
-    if logger.handlers:
-        logger.handlers.clear()
     logger.addHandler(stream_handler)
 
     # Write log msgs into file if filepath is given
