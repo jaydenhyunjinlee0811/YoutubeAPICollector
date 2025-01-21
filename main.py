@@ -5,7 +5,7 @@ import datetime
 import sqlite3
 from argparse import ArgumentParser
 
-from data.__init__personal import CONFIG
+from config import CONFIG
 from src import YoutubeAPIFetch
 from src.utils import get_logger
 
